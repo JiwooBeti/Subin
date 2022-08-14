@@ -8,22 +8,30 @@ import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
+import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import frc.robot.commands.DriveWithJoystick;
 import frc.robot.commands.ExampleCommand;
+import frc.robot.commands.MoveArm;
 import frc.robot.commands.MoveElevator;
 import frc.robot.commands.MoveIntake;
+import frc.robot.commands.MoveIntakeTilt;
 import frc.robot.commands.MoveShooter;
 import frc.robot.commands.MoveTransport;
+import frc.robot.commands.ToggleTiltArm;
+import frc.robot.subsystems.Arm;
 import frc.robot.subsystems.DriveTrain;
 import frc.robot.subsystems.Elevator;
 import frc.robot.subsystems.ExampleSubsystem;
 import frc.robot.subsystems.Intake;
+import frc.robot.subsystems.IntakeTilt;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Transport;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -70,14 +78,27 @@ public class RobotContainer {
   private static Button elevatorUpButton, elevatorDownButton;
   private static Elevator elevator;
 
+  //-------------Tilt---------
+  private static Solenoid tiltSolenoidOne, tiltSolenoidTwo;
+  private static Compressor tiltCompressorOne, tiltCompressorTwo;
+  private static Button tiltButton;
+  private static IntakeTilt intakeTilt;
+
+  //----------Arm---------
+  private static Solenoid armSolenoidOne, armSolenoidTwo;
+  private static Compressor armCompressorOne, armCompressorTwo;
+  private static MotorController armMotorOne, armMotorTwo;
+  private static Button armUpButton, armDownButton, armTiltButton;
+  private static Arm arm;
+
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     //--------Drive Train--------------
-    leftUp = new CANSparkMax(0, MotorType.kBrushed);
-    leftDown = new CANSparkMax(0, MotorType.kBrushed);
-    rightUp = new CANSparkMax(0, MotorType.kBrushed);
-    rightDown = new CANSparkMax(0, MotorType.kBrushed);
+    leftUp = new CANSparkMax(Constants.DRIVETRAIN_LEFT_UP, MotorType.kBrushed);
+    leftDown = new CANSparkMax(Constants.DRIVETRAIN_LEFT_DOWN, MotorType.kBrushed);
+    rightUp = new CANSparkMax(Constants.DRIVETRAIN_RIGHT_UP, MotorType.kBrushed);
+    rightDown = new CANSparkMax(Constants.DRIVETRAIN_RIGHT_DOWN, MotorType.kBrushed);
     left = new MotorControllerGroup(leftUp, leftDown);
     right = new MotorControllerGroup(rightUp, rightDown);
     drive = new DifferentialDrive(left, right);
@@ -101,6 +122,21 @@ public class RobotContainer {
     elevatorController = new WPI_VictorSPX(Constants.ELEVATOR_PORT);
     elevator = new Elevator(elevatorController, Constants.ELEVATOR_SPEED);
 
+    //-----------Tilt-----------------
+    tiltCompressorOne = new Compressor(Constants.TILT_COMPRESSOR_ONE, PneumaticsModuleType.CTREPCM);
+    tiltCompressorTwo = new Compressor(Constants.TILT_COMPRESSOR_TWO, PneumaticsModuleType.CTREPCM);
+    tiltSolenoidOne = new Solenoid(Constants.TILT_SOLENOID_ONE, PneumaticsModuleType.CTREPCM, Constants.TILT_SOLENOID_ONE_CHANNEL);
+    tiltSolenoidTwo = new Solenoid(Constants.TILT_SOLENOID_TWO, PneumaticsModuleType.CTREPCM, Constants.TILT_SOLENOID_TWO_CHANNEL);
+    intakeTilt = new IntakeTilt(tiltSolenoidOne, tiltSolenoidTwo);
+
+    //---------Arm---------------
+    armCompressorOne = new Compressor(Constants.ARM_COMPRESSOR_ONE, PneumaticsModuleType.CTREPCM);
+    armCompressorTwo = new Compressor(Constants.ARM_COMPRESSOR_TWO, PneumaticsModuleType.CTREPCM);
+    armSolenoidOne = new Solenoid(Constants.ARM_SOLENOID_ONE, PneumaticsModuleType.CTREPCM, Constants.ARM_SOLENOID_ONE_CHANNEL);
+    armSolenoidTwo = new Solenoid(Constants.ARM_SOLENOID_TWO, PneumaticsModuleType.CTREPCM, Constants.ARM_SOLENOID_TWO_CHANNEL);
+    armMotorOne = new WPI_VictorSPX(Constants.ARM_LEFT);
+    armMotorTwo = new WPI_VictorSPX(Constants.ARM_RIGHT);
+    arm = new Arm(armMotorOne, armMotorTwo, armSolenoidOne, armSolenoidTwo, Constants.ARM_SPEED);
 
     
     
@@ -133,6 +169,16 @@ public class RobotContainer {
     elevatorDownButton = new JoystickButton(joy,Constants.ELEVATOR_DOWN_BUTTON);
     elevatorUpButton.whileHeld(new MoveElevator());
     elevatorDownButton.whileHeld(new MoveElevator());
+
+    tiltButton = new JoystickButton(joy, Constants.INTAKE_TILT_BUTTON);
+    tiltButton.whileHeld(new MoveIntakeTilt());
+
+    armUpButton = new JoystickButton(joy, Constants.ARM_UP_BUTTON);
+    armUpButton.whileHeld(new MoveArm());
+    armDownButton = new JoystickButton(joy, Constants.ARM_DOWN_BUTTON);
+    armDownButton.whileHeld(new MoveArm());
+    armTiltButton = new JoystickButton(joy, Constants.ARM_TILT_BUTTON);
+    armTiltButton.whileHeld(new ToggleTiltArm());
     
     
   }
@@ -153,5 +199,7 @@ public class RobotContainer {
   public static Transport getTransport() {return transport;}
   public static Shooter getShooter() {return shooter;}
   public static Elevator getElevator() {return elevator;}
+  public static IntakeTilt getIntakeTilt() {return intakeTilt;}
+  public static Arm getArm() {return arm;}
   
 }
